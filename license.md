@@ -1,0 +1,1 @@
+This software is hereby released into the public domain, without warranties of any kind, explicit or implicit.
