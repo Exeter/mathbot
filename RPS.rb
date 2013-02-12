@@ -104,8 +104,13 @@ class Zfeng
 
   def post_predict(move)
     if @accuracy[0]<=$random&&@accuracy[1]<=$random
-      move=getRandom
-      print "Random Fallback in effect\n" if $DEV
+      @fallbackcount+=1
+      if @fallbackcount>=5
+        move=getRandom
+        print "Random Fallback in effect\n" if $DEV
+      end
+    else
+      @fallbackcount=0
     end
     feed_all(move,2)
     @total+=1
