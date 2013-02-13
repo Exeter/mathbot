@@ -7,11 +7,12 @@ morple = Popen(['./a.out'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
 x=0
 count=[0,0,0]
-while x<=1000:
+while x<1000:
     # check if slave has terminated:
     if zfeng.poll() is not None or morple.poll() is not None:
         print 'slave has terminated.'
         morple.kill()
+        zfeng.kill()
         exit()
     # read one line, remove newline chars and trailing spaces:
     fengout = zfeng.stdout.read(1)
@@ -31,11 +32,11 @@ while x<=1000:
     else:
         morpletemp=2
     if (fengtemp-morpletemp+3)%3==1:
-        count[0]+=1
+        count[2]+=1
     elif fengtemp==morpletemp:
         count[1]+=1
     else:
-        count[2]+=1
+        count[0]+=1
     print morpleout + " VS "+fengout
     # write that line to slave's stdin
     try:
