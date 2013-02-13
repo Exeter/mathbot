@@ -19,8 +19,9 @@ class Zfeng
 
  # Main method
   def start
+    print getRandom
     #print "[end]\n"
-    STDOUT.flush
+    #STDOUT.flush
     while(@total<=10000)
       predict
     end
