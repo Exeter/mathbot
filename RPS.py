@@ -1,72 +1,37 @@
-$RANDOM=false
-$DEV=false
-$overturn_threshold=(1.0/3)-(0.67448/6)
-$random=1.0/3-0.05
-
-class Zfeng
-
-  attr_accessor :predictors, :prediction, :total, :current, :accurate, :accuracy, :count
-
-  def initialize()
-    @current=0
-    @count=[0,0,0]
-    @predictors=[Unigram_predictor.new,Bigram_predictor.new,Result_predictor.new,Response_predictor.new]
-    @prediction=[]
-    @total=0
-    @accurate=[0,0]
-    @accuracy=[1,1]
-  end
+RANDOM=false
+DEV=false
+overturn_threshold=(1.0/3)-(0.67448/6)
+random=1.0/3-0.05
+class Zfeng:
+  def __init__():
+    self.current=0
+    self.count=[0,0,0]
+    self.predictors=[Unigram_predictor(),Bigram_predictor(),Result_predictor(),Response_predictor()]
+    self.prediction=[]
+    self.total=0
+    self.accurate=[0,0]
+    self.accuracy=[1,1]
 
  # Main method
-  def start
-    #print "[end]\n"
-    STDOUT.flush
-    while(@total<=10000)
+  def start():
+    while self.total<=10000:
       predict
-    end
-    #print "Accuracies >>"+@accuracy.to_s+"\n"
-    #print "Scores:" + "\n"
-    #print "Computer Win:" + @count[0].to_s + " Percentage:"+(@count[0].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
-    #print "Tie:"  + @count[2].to_s + " Percentage:"+(@count[2].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
-    #print "Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n\n"
+    print "Accuracies >>"+self.accuracy.to_s+"\n"
+    print "Scores:" + "\n"
+    print "Computer Win:" + self.count[0] + " Percentage:"+(float(self.count[0])/(self.count[0]+self.count[1]+self.count[2])).to_s+ "\n"
+    print "Tie:"  + self.count[2] + " Percentage:"+float(count[2])/(self.count[0]+self.count[1]+self.count[2])+ "\n"
+    print "Computer Lost:"  + self.count[1] + " Percentage:"+float(self.count[1])/(self.count[0]+self.count[1]+self.count[2])+ "\n\n"
   end
 
-  # Get input from console
-  def getInput
-    if !$RANDOM
-      input=STDIN.getc()
-      case input
-        when "R"
-          @current=1
-        when "P"
-          @current=2
-        when "S"
-          @current=3
-      end
-    else
-      @current=getRandom
-    end
-    feed_all(@current,1)
-  end
-
-  def getRandom
-    return (Random.rand*3).floor+1
-  end
-
-  def assimilate
-    for i in 0...@predictors.size
-      @prediction[i]=@predictors[i].predict
-    end
-    if !$RANDOM && $DEV
-      print "Unigram predictor predicts " + @prediction[0].to_s+"\n"
-      print "Result predictor predicts " + (@prediction[1].to_s) + "\n"
-      print "Bigram predictor predicts " + (@prediction[2].to_s) + "\n"
-      print "Response predictor predicts " + @prediction[3].to_s + "\n"
+  def assimilate():
+    for i in range(0,self.predictors.size):
+      self.prediction[i]=self.predictors[i].predict
     end
     result=[0,0,0]
-    for i in 0...@predictors.size
-      next if @prediction[i]==nil
-      result[0]+=@prediction[i][0]*(@predictors[i].accuracy+2*(@predictors[i].accuracy>=1.0/3?@predictors[i].accuracy-1.0/3:0))
+    for i in range(0,self.predictors.size):
+      if self.prediction[i]==nil:
+          continue
+      result[0]+=self.prediction[i][0]*(self.predictors[i].accuracy+2*(self.predictors[i].accuracy>=1.0/3?self.predictors[i].accuracy-1.0/3:0))
       result[1]+=@prediction[i][1]*(@predictors[i].accuracy+2*(@predictors[i].accuracy>=1.0/3?@predictors[i].accuracy-1.0/3:0))
       result[2]+=@prediction[i][2]*(@predictors[i].accuracy+2*(@predictors[i].accuracy>=1.0/3?@predictors[i].accuracy-1.0/3:0))
     end
@@ -84,8 +49,8 @@ class Zfeng
       decision=((@prediction[5].index(@prediction[5].max)+2)%3==0?3:(@prediction[5].index(@prediction[5].max)+2)%3)
       print "Aggregate is flipped\n" if $DEV
     end
-    #print "[end]\n"
-    #STDOUT.flush
+    print "[end]\n"
+    STDOUT.flush
     return decision
   end
 
@@ -113,31 +78,33 @@ class Zfeng
     @total+=1
     getInput
     if !$RANDOM
+      print "Zfeng plays: "
       case move
         when 1
-          print "R"
+          print "Rock"
         when 2
-          print "P"
+          print "Paper"
         when 3
-          print "S"
+          print "Scissor"
       end
+      print "\n"
     end
     result=move-@current
     case result
       when -2,1
         @count[0]+=1
         feed_all(1,3)
-        #print "You lost!" if !$RANDOM
+        print "You lost!" if !$RANDOM
       when 2,-1
         @count[1]+=1
         feed_all(-1,3)
-        #print "You won!" if !$RANDOM
+        print "You won!" if !$RANDOM
     else
       @count[2]+=1
     feed_all(0,3)
-    #print "You tied!" if !$RANDOM
+    print "You tied!" if !$RANDOM
     end
-    #print "\n" if !$RANDOM
+    print "\n" if !$RANDOM
     for i in 4...6
       break if @total<=2
       if @prediction[i].index(@prediction[i].max)+1==@current
@@ -153,14 +120,14 @@ class Zfeng
     end
     accuracies.push(@accuracy[0])
     accuracies.push(@accuracy[1])
-    #print "Accuracies >> "+accuracies.to_s+"\n" if $DEV
-    #print "Aggregate accuracies >> "+@accuracy.to_s+"\n" if $DEV
-    #print "Scores:" + "\n"
-    #print "Computer Win:" + @count[0].to_s + " Percentage:"+(@count[0].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
-    #print "Tie:"  + @count[2].to_s + " Percentage:"+(@count[2].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
-    #print "Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
-    #print "[end]\n"
-    #STDOUT.flush
+    print "Accuracies >> "+accuracies.to_s+"\n" if $DEV
+    print "Aggregate accuracies >> "+@accuracy.to_s+"\n" if $DEV
+    print "Scores:" + "\n"
+    print "Computer Win:" + @count[0].to_s + " Percentage:"+(@count[0].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
+    print "Tie:"  + @count[2].to_s + " Percentage:"+(@count[2].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
+    print "Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n"
+    print "[end]\n"
+    STDOUT.flush
   end
 
   def flip
@@ -168,7 +135,7 @@ class Zfeng
       if @predictors[i].accuracy<=$overturn_threshold && total-@predictors[i].lastflip>=10
         @predictors[i].flip=!@predictors[i].flip
         @predictors[i].lastflip=total
-        #print "Predictor "+ i.to_s + " has been flipped with an accuracy of "+@predictors[i].accuracy.to_s+"\n"
+        print "Predictor "+ i.to_s + " has been flipped with an accuracy of "+@predictors[i].accuracy.to_s+"\n"
       end
     end
   end
@@ -372,5 +339,5 @@ class Response_predictor < Predictor
   end
 end
 
-instance=Zfeng.new
+instance=Zfeng()
 instance.start
