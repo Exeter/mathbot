@@ -22,8 +22,8 @@ class Zfeng
     random=getRandom
     print random==1?"R":(random==2?"P":"S")
     #print "[end]\n"
-    #STDOUT.flush
-    while(@total<=10000)
+    STDOUT.flush
+    while(true)
       predict
     end
     #print "Accuracies >>"+@accuracy.to_s+"\n"
@@ -124,6 +124,7 @@ class Zfeng
           print "S"
       end
     end
+    STDOUT.flush
     result=move-@current
     case result
       when -2,1

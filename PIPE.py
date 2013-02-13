@@ -1,38 +1,50 @@
 from subprocess import Popen, PIPE, STDOUT
 import time
 
-print 'launching slave process...'
-zfeng = Popen(['ruby', 'RPS.rb'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+print 'launching slave processes...'
+zfeng = Popen(['ruby','RPS.rb'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 morple = Popen(['./a.out'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
-while True:
-    while True:
-        # check if slave has terminated:
-        if slave.poll() is not None:
-            print 'slave has terminated.'
-            exit()
-        # read one line, remove newline chars and trailing spaces:
-        line = slave.stdout.readline().rstrip()
-        #print 'line:', line
-        if line == '[end]':
-            break
-        result.append(line)
-    # read user input, expression to be evaluated:
-    line = raw_input('Enter expression or exit:')
+x=0
+count=[0,0,0]
+while x<=1000:
+    # check if slave has terminated:
+    if zfeng.poll() is not None or morple.poll() is not None:
+        print 'slave has terminated.'
+        morple.kill()
+        exit()
+    # read one line, remove newline chars and trailing spaces:
+    fengout = zfeng.stdout.read(1)
+    morpleout = morple.stdout.read(1)
+    fengtemp=0
+    morpletemp=0
+    if fengout=='R':
+        fengtemp=0
+    elif fengout=='P':
+        fengtemp=1
+    else:
+        fengtemp=2
+    if morpleout=='R':
+        morpletemp=0
+    elif morpleout=='P':
+        morpletemp=1
+    else:
+        morpletemp=2
+    if (fengtemp-morpletemp+3)%3==1:
+        count[0]+=1
+    elif fengtemp==morpletemp:
+        count[1]+=1
+    else:
+        count[2]+=1
+    print morpleout + " VS "+fengout
     # write that line to slave's stdin
-    slave.stdin.write(line+'\n')
-    # result will be a list of lines:
-    result = []
-    # read slave output line by line, until we reach "[end]"
-    while True:
-        # check if slave has terminated:
-        if slave.poll() is not None:
-            print 'slave has terminated.'
-            exit()
-        # read one line, remove newline chars and trailing spaces:
-        line = slave.stdout.readline()
-        #print 'line:', line
-        if line == "[end]\n":
-            break
-        result.append(line)
-    print "".join(result)
+    try:
+        morple.stdin.write(fengout)
+        zfeng.stdin.write(morpleout)
+    except IOError, e:
+        print "ERROR"
+        morple.kill()
+    x+=1
+print count
+morple.kill()
+zfeng.kill()
