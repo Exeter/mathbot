@@ -19,7 +19,8 @@ class Zfeng
 
  # Main method
   def start
-    print getRandom
+    random=getRandom
+    print random==1?"R":(random==2?"P":"S")
     #print "[end]\n"
     #STDOUT.flush
     while(@total<=10000)
