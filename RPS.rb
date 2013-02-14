@@ -21,7 +21,7 @@ class Zfeng
   def start
     random=getRandom
     print random==1?"R":(random==2?"P":"S")
-    feed_all((1?"R":(random==2?"P":"S")),2)
+    feed_all(random,2)
     #print "[end]\n"
     STDOUT.flush
     while(true)
