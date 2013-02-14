@@ -1,1 +1,1 @@
-This software is hereby released into the public domain, without warranties of any kind, explicit or implicit.
+To the extent possible under law, Weihang Fan has waived all copyright and related or neighboring rights to this work. This work is published from: United States.
