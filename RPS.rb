@@ -24,6 +24,7 @@ class Zfeng
     #print "[end]\n"
     STDOUT.flush
     while(true)
+      getInput
       predict
     end
     #print "Accuracies >>"+@accuracy.to_s+"\n"
@@ -48,7 +49,6 @@ class Zfeng
     else
       @current=getRandom
     end
-    feed_all(@current,1)
   end
 
   def getRandom
@@ -102,6 +102,7 @@ class Zfeng
   end
 
   def post_predict(move)
+    feed_all(move,1)
     if @accuracy[0]<=$random&&@accuracy[1]<=$random
       @fallbackcount+=1
       if @fallbackcount>=5
@@ -113,7 +114,6 @@ class Zfeng
     end
     feed_all(move,2)
     @total+=1
-    getInput
     if !$RANDOM
       case move
         when 1
