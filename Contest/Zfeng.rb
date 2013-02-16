@@ -6,6 +6,7 @@ class Zfeng
   def initialize()
     @current=0
     @count=[0,0,0]
+    @actualcount=[0,0,0]
     @predictors=[Unigram_predictor.new,Bigram_predictor.new,Result_predictor.new,Response_predictor.new,Self_bigram_predictor.new,LongPatternMatcher.new,SelfPatternMatcher.new]
     @prediction=[]
     @total=0
@@ -119,14 +120,17 @@ class Zfeng
     case result
       when 1
         @count[0]+=1
+        @actualcount[0]+=1
         feed_all(1,3)
         @debug.write("You lost!" )
       when 2
         @count[1]+=1
+        @actualcount[1]+=1
         feed_all(-1,3)
         @debug.write("You won!" )
       when 0
         @count[2]+=1
+        @actualcount[2]+=1
         feed_all(0,3)
         @debug.write("You tied!" )
     end
@@ -139,9 +143,9 @@ class Zfeng
     @debug.write("Expectations >> "+expectations.to_s+"\n")
     @debug.write("Aggregate expectation >> "+@expectation.to_s+"\n")
     @debug.write("Scores:" + "\n")
-    @debug.write("Computer Win:" + @count[0].to_s + " Percentage:"+(@count[0].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
-    @debug.write("Tie:"  + @count[2].to_s + " Percentage:"+(@count[2].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
-    @debug.write("Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")\
+    @debug.write("Computer Win:" + @actualcount[0].to_s + " Percentage:"+(@actualcount[0].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")
+    @debug.write("Tie:"  + @actualcount[2].to_s + " Percentage:"+(@actualcount[2].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")
+    @debug.write("Computer Lost:"  + @actualcount[1].to_s + " Percentage:"+(@actualcount[1].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")\
   end
 
   def flip

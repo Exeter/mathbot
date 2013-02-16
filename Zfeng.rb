@@ -117,14 +117,17 @@ class Zfeng
     case result
       when 1
         @count[0]+=1
+        @actualcount[0]+=1
         feed_all(1,3)
         print("You lost!" )
       when 2
         @count[1]+=1
+        @actualcount[0]+=1
         feed_all(-1,3)
         print("You won!" )
       when 0
         @count[2]+=1
+        @actualcount[0]+=1
         feed_all(0,3)
         print("You tied!" )
     end
@@ -137,9 +140,9 @@ class Zfeng
     @debug.write("Expectations >> "+expectations.to_s+"\n")
     @debug.write("Aggregate expectation >> "+@expectation.to_s+"\n")
     print("Scores:" + "\n")
-    print("Computer Win:" + @count[0].to_s + " Percentage:"+(@count[0].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
-    print("Tie:"  + @count[2].to_s + " Percentage:"+(@count[2].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
-    print("Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")\
+    print("Computer Win:" + @actualcount[0].to_s + " Percentage:"+(@actualcount[0].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")
+    print("Tie:"  + @actualcount[2].to_s + " Percentage:"+(@actualcount[2].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")
+    print("Computer Lost:"  + @actualcount[1].to_s + " Percentage:"+(@actualcount[1].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")\
   end
 
   def flip
