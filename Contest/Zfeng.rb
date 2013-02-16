@@ -1,30 +1,28 @@
-$overturn_threshold=(1.0/3)-(0.67448/6)
-$random=1.0/3-0.05
+#!/usr/bin/ruby
+$overturn_threshold=-0.67448/6
 
 class Zfeng
-
-  attr_accessor :predictors, :prediction, :total, :current, :accurate, :accuracy, :count, :debug
 
   def initialize()
     @current=0
     @count=[0,0,0]
-    @predictors=[Unigram_predictor.new,Bigram_predictor.new,Result_predictor.new,Response_predictor.new,Self_bigram_predictor.new]
+    @predictors=[Unigram_predictor.new,Bigram_predictor.new,Result_predictor.new,Response_predictor.new,Self_bigram_predictor.new,LongPatternMatcher.new]
     @prediction=[]
     @total=0
-    @accurate=[0,0]
-    @accuracy=[1,1]
+    @rate=[0,0,0]
+    @expectation=0
     @debug=File.new("Zfeng.debug","w")
+    @flip=0
+    @lastflip=0
+    @record=[]
+    @magicnumber=0.99
   end
 
  # Main method
   def start
-    random=getRandom
-    print random==1?"R":(random==2?"P":"S")
-    feed_all(random,2)
-    STDOUT.flush
     while(true)
-      getInput
-      predict
+      move=predict
+      post_predict(move)
     end
   end
 
@@ -39,6 +37,7 @@ class Zfeng
       when "S"
         @current=3
     end
+    feed_all(@current,1)
   end
 
   def getRandom
@@ -49,37 +48,43 @@ class Zfeng
     for i in 0...@predictors.size
       @prediction[i]=@predictors[i].predict
     end
+    #@debug.write("Unigram >> "+@predictors[0].humancount.to_s)
     @debug.write("Unigram predictor predicts " + @prediction[0].to_s+"\n")
     @debug.write("Result predictor predicts " + @prediction[2].to_s + "\n")
     @debug.write("Bigram predictor predicts " + @prediction[1].to_s + "\n")
     @debug.write("Response predictor predicts " + @prediction[3].to_s + "\n")
     @debug.write("Self-Markov predictor predicts " + @prediction[4].to_s + "\n")
+    @debug.write("Long Pattern matcher predicts " + @prediction[5].to_s + "\n")
     result=[0,0,0]
     for i in 0...@predictors.size
       next if @prediction[i]==nil
-      result[0]+=@prediction[i][0]*(@predictors[i].accuracy+2*(@predictors[i].accuracy>=1.0/3?@predictors[i].accuracy-1.0/3:0))
-      result[1]+=@prediction[i][1]*(@predictors[i].accuracy+2*(@predictors[i].accuracy>=1.0/3?@predictors[i].accuracy-1.0/3:0))
-      result[2]+=@prediction[i][2]*(@predictors[i].accuracy+2*(@predictors[i].accuracy>=1.0/3?@predictors[i].accuracy-1.0/3:0))
+      result[0]+=@prediction[i][0]*@predictors[i].expectation
+      result[1]+=@prediction[i][1]*@predictors[i].expectation
+      result[2]+=@prediction[i][2]*@predictors[i].expectation
     end
-
     agg=result[0]+result[1]+result[2]
     for i in 0...3
       result[i]/=agg
     end
-    @prediction[5]=result
-    @prediction[6]=[@prediction[5][2],@prediction[5][0],@prediction[5][1]]
+    result[0],result[1],result[2]=result[(@flip)%3],result[(1+@flip)%3],result[(2+@flip)%3]
     @debug.write("Aggregate is betting on " + result.to_s + "\n")
-    if @accuracy[0]>=@accuracy[1]
-      decision=((result.index(result.max)+2)%3==0?3:(result.index(result.max)+2)%3)
+    first=result.index(result.max)+1
+    second=result.index(result.sort[-2])+1
+    @debug.write("First >> "+first.to_s+"\n")
+    @debug.write("Second >> "+second.to_s+"\n")
+    if (first-second+3)%3==1
+      final=first
     else
-      decision=((@prediction[6].index(@prediction[6].max)+2)%3==0?3:(@prediction[6].index(@prediction[6].max)+2)%3)
-      @debug.write("Aggregate is flipped")
+      final=second
     end
-    if @accuracy.max<$random
-      decision=getRandom
-      @debug.write("Random fallback in effect")
+    if second<0.0||first-second>=0.5*first
+      final=(first+1)%3==0?3:(first+1)%3
     end
-    return decision
+    if @expectation<-0.15
+        final=getRandom
+        @debug.write("Random fallback in effect\n")
+    end
+    return final
   end
 
   def predict
@@ -89,11 +94,10 @@ class Zfeng
     else
       move=assimilate
     end
-    post_predict(move)
+    return move
   end
 
   def post_predict(move)
-    feed_all(@current,1)
     feed_all(move,2)
     @total+=1
     case move
@@ -105,49 +109,49 @@ class Zfeng
         print "S"
     end
     STDOUT.flush
-    result=move-@current
+    getInput
+    result=(move-@current+3)%3
+    for i in 0...3
+      @count[i]*=@magicnumber
+    end
+    @debug.write("This is game "+@total.to_s+"\n")
+    @debug.write("Opponent plays "+@current.to_s+" and I play "+move.to_s+"\n")
     case result
-      when -2,1
+      when 1
         @count[0]+=1
         feed_all(1,3)
         @debug.write("You lost!" )
-      when 2,-1
+      when 2
         @count[1]+=1
         feed_all(-1,3)
         @debug.write("You won!" )
-    else
-      @count[2]+=1
-    feed_all(0,3)
-    @debug.write("You tied!" )
+      when 0
+        @count[2]+=1
+        feed_all(0,3)
+        @debug.write("You tied!" )
     end
     @debug.write("\n" )
-    for i in 5...7
-      break if @total<=2
-      if @prediction[i].index(@prediction[i].max)+1==@current
-        @accurate[i-5]+=1
-      end
-        @accuracy[i-5]=1.0/2*@accuracy[i-5]+1.0/2*@accurate[i-5].to_f/(@total-2)
-    end
     flip
-    accuracies=[]
-    for i in 0...@predictors.size
-      accuracies[i]=@predictors[i].accuracy
+    @expectation=@count[0]/(@count[0]+@count[1]+@count[2])-@count[1]/(@count[0]+@count[1]+@count[2])
+    if @expectation<0&&@total>=2
+      @lastflip=@total
+      @flip+=2
     end
-    @debug.write("Accuracies >> "+accuracies.to_s+"\n")
-    @debug.write("Aggregate accuracies >> "+@accuracy.to_s+"\n")
+    expectations=[]
+    for i in 0...@predictors.size
+      expectations[i]=@predictors[i].expectation
+    end
+    @debug.write("Expectations >> "+expectations.to_s+"\n")
+    @debug.write("Aggregate expectation >> "+@expectation.to_s+"\n"+"FLIP >> "+@flip.to_s+"\n")
     @debug.write("Scores:" + "\n")
     @debug.write("Computer Win:" + @count[0].to_s + " Percentage:"+(@count[0].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
     @debug.write("Tie:"  + @count[2].to_s + " Percentage:"+(@count[2].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
-    @debug.write("Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
+    @debug.write("Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")\
   end
 
   def flip
     for i in 0...@predictors.size
-      if @predictors[i].accuracy<=$overturn_threshold && total-@predictors[i].lastflip>=10
-        @predictors[i].flip=!@predictors[i].flip
-        @predictors[i].lastflip=total
-        #@debug.write("Predictor "+ i.to_s + " has been flipped with an accuracy of "+@predictors[i].accuracy.to_s+"\n")
-      end
+      @predictors[i].flip
     end
   end
   
@@ -160,16 +164,16 @@ end
 
 class Predictor
   
-  attr_accessor :history, :self, :result, :flip, :lastflip, :prediction, :accurate, :accuracy
-  
+  attr_accessor :history, :self, :result, :flip, :lastflip, :prediction, :magicnumber, :expectation, :name
   def initialize()
     @history=[]
     @self=[]
     @result=[]
-    @flip=false
+    @flip=0
     @lastflip=0
     @prediction=[0,0,0]
-    @accurate=0
+    @rate=[0.0,0.0,0.0]
+    @expectation=1.0
   end
   
   # Feed the data to the predictor
@@ -178,26 +182,40 @@ class Predictor
     case type
     when 1
       @history.push(move)
-      if move==@prediction.index(@prediction.max)+1
-        @accurate+=1
+      if @prediction.max!=0
+        for i in 0...3
+          @rate[i]*=0.9
+        end
+        case ((move-(@prediction.index(@prediction.max)+1))+3)%3
+        when 0
+          @rate[0]+=1
+        when 1
+          @rate[1]+=1
+        when 2
+          @rate[2]+=1
+        end
+        @expectation=(@rate[0]/(@rate[0]+@rate[1]+@rate[2])-@rate[2]/(@rate[0]+@rate[1]+@rate[2]))
       end
     when 2
       @self.push(move)
     when 3
       @result.push(move)
-      @accuracy=0.5*@accuracy+0.5*(@accurate/(@history.size.to_f-1.0)) if @prediction.max!=0
+    end
+  end
+  
+  def flip
+    if @expectation<0&&@history.size>=2&&@history.size-@lastflip>=5
+      @lastflip=@history.size
+      @flip+=2
     end
   end
 end
 
 class Unigram_predictor < Predictor
   
-  attr_accessor :humancount, :magicnumber
-  
   def initialize
     super
-    @humancount=[0,0,0]
-    @accuracy=1.0/3
+    @humancount=[0.0,0.0,0.0]
     @magicnumber=0.5
   end
   
@@ -208,22 +226,12 @@ class Unigram_predictor < Predictor
       @humancount[i]*=@magicnumber
     end
     @humancount[move-1]+=1.0
-    return if @history.size==1
   end
   
   def predict
-    total=(@humancount[0]+@humancount[1]+@humancount[2]).to_f
+    total=@humancount[0]+@humancount[1]+@humancount[2]
     ret=[@humancount[0]/total,@humancount[1]/total,@humancount[2]/total]
-    agg=ret[0]+ret[1]+ret[2]
-    for i in 0...3
-      ret[i]/=agg
-    end
-    if @flip
-      max=ret.index(ret.max)
-      temp=ret.max
-      ret[max]=ret[(max==0?2:max-1)]
-      ret[(max==0?2:max-1)]=temp
-    end
+    ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
     @prediction=ret
     return ret
   end
@@ -231,13 +239,10 @@ end
 
 class Bigram_predictor < Predictor
   
-  attr_accessor :bigrams,:magicnumber
-  
   def initialize
     super
     @bigrams=[[0,0,0],[0,0,0],[0,0,0]]
-    @accuracy=1
-    @magicnumber=0.8
+    @magicnumber=0.96
   end
   
   def feed(move,type)
@@ -248,7 +253,7 @@ class Bigram_predictor < Predictor
           @bigrams[i][k]*=@magicnumber
         end
       end
-      @bigrams[@history.last-1][move-1]+=1
+      @bigrams[@history[@history.size-2]-1][move-1]+=1
     end
   end
   
@@ -259,12 +264,7 @@ class Bigram_predictor < Predictor
     for i in 0...3
       ret[i]/=total
     end
-    if @flip
-      max=ret.index(ret.max)
-      temp=ret.max
-      ret[max]=ret[(max==0?2:max-1)]
-      ret[(max==0?2:max-1)]=temp
-    end
+    ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
     @prediction=ret
     return ret
   end
@@ -272,12 +272,9 @@ end
 
 class Result_predictor < Predictor
   
-  attr_accessor :magicnumber, :results
-  
   def initialize
     super
-    @accuracy=1
-    @magicnumber=0.9
+    @magicnumber=0.96
     @results=[[0,0,0],[0,0,0],[0,0,0]]
   end
   
@@ -299,24 +296,16 @@ class Result_predictor < Predictor
     for i in 0...3
       ret[i]/=agg
     end
-    if @flip
-      max=ret.index(ret.max)
-      temp=ret.max
-      ret[max]=ret[(max==0?2:max-1)]
-      ret[(max==0?2:max-1)]=temp
-    end
+    ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
     @prediction=ret
     return ret
   end
 end
 
 class Response_predictor < Predictor
-  attr_accessor :response, :magicnumber
-  
   def initialize
     super
-    @accuracy=1
-    @magicnumber=0.9
+    @magicnumber=0.96
     @response=[[0,0,0],[0,0,0],[0,0,0]]
   end
   
@@ -339,12 +328,7 @@ class Response_predictor < Predictor
     for i in 0...3
       ret[i]/=agg
     end
-    if @flip
-      max=ret.index(ret.max)
-      temp=ret.max
-      ret[max]=ret[(max==0?2:max-1)]
-      ret[(max==0?2:max-1)]=temp
-    end
+    ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
     @prediction=ret
     return ret
   end
@@ -352,13 +336,10 @@ end
 
 class Self_bigram_predictor < Predictor
   
-  attr_accessor :bigrams,:magicnumber
-  
   def initialize
     super
     @bigrams=[[0,0,0],[0,0,0],[0,0,0]]
-    @accuracy=1
-    @magicnumber=0.96
+    @magicnumber=0.95
   end
   
   def feed(move,type)
@@ -374,22 +355,43 @@ class Self_bigram_predictor < Predictor
   end
   
   def predict
-    ret=@bigrams[@history.last-1]
+    ret=@bigrams[@self.last-1]
     total=ret[0]+ret[1]+ret[2]
     return nil if total==0
     for i in 0...3
       ret[i]/=total
     end
-    if @flip
-      max=ret.index(ret.max)
-      temp=ret.max
-      ret[max]=ret[(max==0?2:max-1)]
-      ret[(max==0?2:max-1)]=temp
-    end
     ret=[ret[2],ret[0],ret[1]]
+    ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
     @prediction=ret
     return ret
   end
+end
+
+class LongPatternMatcher < Predictor
+  
+  def predict
+    len = @history.length;
+    last = @history[0]
+    ret = [0,0,0]
+    for i in 0...len
+      for x in 0...25
+        if @history[i+x]==@history[x]
+          ret[last-1]+=x
+        end
+      end
+      last = @history[i]
+    end
+    total=ret[0]+ret[1]+ret[2]
+    return nil if total==0
+    for i in 0...3
+      ret[i]/=total
+    end
+    ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
+    @prediction=ret
+    return ret
+  end
+  
 end
 
 instance=Zfeng.new

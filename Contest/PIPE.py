@@ -1,13 +1,14 @@
+# /usr/bin/env python
 from subprocess import Popen, PIPE, STDOUT
 import time
 
 print 'launching slave processes...'
-zfeng = Popen(['ruby','RPS.rb'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+zfeng = Popen(['ruby','Zfeng.rb'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 morple = Popen(['./a.out'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
 x=0
-count=[0,0,0]
-while x<1000:
+count=[0 for i in range(3)]
+while x<10000:
     # check if slave has terminated:
     if zfeng.poll() is not None or morple.poll() is not None:
         print 'slave has terminated.'
@@ -16,6 +17,8 @@ while x<1000:
         exit()
     # read one line, remove newline chars and trailing spaces:
     fengout = zfeng.stdout.read(1)
+    if fengout==".":
+        print zfeng.stdout.read()
     morpleout = morple.stdout.read(1)
     fengtemp=0
     morpletemp=0
