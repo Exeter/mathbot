@@ -17,11 +17,9 @@ while x<1000:
         exit()
     # read one line, remove newline chars and trailing spaces:
     fengout = zfeng.stdout.read(1)
-    print "Got Zfeng output"
     if fengout==".":
         print zfeng.stdout.read()
     morpleout = morple.stdout.read(1)
-    print "Got opponent output"
     fengtemp=0
     morpletemp=0
     if fengout=='R':
@@ -42,7 +40,6 @@ while x<1000:
         count[1]+=1
     else:
         count[0]+=1
-    print morpleout + " VS "+fengout
     # write that line to slave's stdin
     try:
         morple.stdin.write(fengout)
