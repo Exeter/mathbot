@@ -56,12 +56,15 @@ class Zfeng
     @debug.write("Long Pattern matcher predicts " + @prediction[5].to_s + "\n")
     result=[0,0,0]
     for i in 0...@predictors.size
-      next if @prediction[i]==nil
+      next if @prediction[i]==nil||@predictors[i].expectation<0
       result[0]+=@prediction[i][0]*@predictors[i].expectation
       result[1]+=@prediction[i][1]*@predictors[i].expectation
       result[2]+=@prediction[i][2]*@predictors[i].expectation
     end
     agg=result[0]+result[1]+result[2]
+    if agg==0
+      return getRandom
+    end
     for i in 0...3
       result[i]/=agg
     end
@@ -77,7 +80,7 @@ class Zfeng
     if second<0.0||first-second>=0.5*second
       final=(first+1)%3==0?3:(first+1)%3
     end
-    if @expectation<-0.15
+    if @expectation<-0.1
         final=getRandom
         @debug.write("Random fallback in effect\n")
     end

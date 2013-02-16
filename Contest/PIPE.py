@@ -8,7 +8,7 @@ morple = Popen(['./a.out'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
 x=0
 count=[0 for i in range(3)]
-while x<10000:
+while x<1000:
     # check if slave has terminated:
     if zfeng.poll() is not None or morple.poll() is not None:
         print 'slave has terminated.'
