@@ -6,6 +6,7 @@ class Zfeng
   def initialize()
     @current=0
     @count=[0,0,0]
+    @actualcount=[0,0,0]
     @predictors=[Unigram_predictor.new,Bigram_predictor.new,Result_predictor.new,Response_predictor.new,Self_bigram_predictor.new,LongPatternMatcher.new,SelfPatternMatcher.new]
     @prediction=[]
     @total=0
@@ -99,6 +100,7 @@ class Zfeng
 
   def post_predict(move)
     @total+=1
+    getInput
     case move
       when 1
         print "R"
@@ -108,7 +110,6 @@ class Zfeng
         print "S"
     end
     print "\n"
-    getInput
     feed_all(move,2)
     result=(move-@current+3)%3
     for i in 0...3
@@ -122,12 +123,12 @@ class Zfeng
         print("You lost!" )
       when 2
         @count[1]+=1
-        @actualcount[0]+=1
+        @actualcount[1]+=1
         feed_all(-1,3)
         print("You won!" )
       when 0
         @count[2]+=1
-        @actualcount[0]+=1
+        @actualcount[2]+=1
         feed_all(0,3)
         print("You tied!" )
     end
