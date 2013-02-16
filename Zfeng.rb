@@ -6,16 +6,15 @@ class Zfeng
   def initialize()
     @current=0
     @count=[0,0,0]
-    @actualcount=[0,0,0]
-    @predictors=[Unigram_predictor.new,Bigram_predictor.new,Result_predictor.new,Response_predictor.new,Self_bigram_predictor.new,LongPatternMatcher.new]
+    @predictors=[Unigram_predictor.new,Bigram_predictor.new,Result_predictor.new,Response_predictor.new,Self_bigram_predictor.new,LongPatternMatcher.new,SelfPatternMatcher.new]
     @prediction=[]
     @total=0
     @rate=[0,0,0]
     @expectation=0
+    @debug=File.new("Zfeng.debug","w")
     @flip=0
     @lastflip=0
     @record=[]
-    @debug=File.new("Zfeng.debug","w")
     @magicnumber=0.99
   end
 
@@ -29,8 +28,7 @@ class Zfeng
 
   # Get input from console
   def getInput
-    input=STDIN.getc
-    input=STDIN.getc if input=="\n"
+    input=STDIN.gets.chomp
     case input
       when "R"
         @current=1
@@ -56,30 +54,33 @@ class Zfeng
     @debug.write("Response predictor predicts " + @prediction[3].to_s + "\n")
     @debug.write("Self-Markov predictor predicts " + @prediction[4].to_s + "\n")
     @debug.write("Long Pattern matcher predicts " + @prediction[5].to_s + "\n")
+    @debug.write("Self Pattern matcher predicts " + @prediction[6].to_s + "\n")
     result=[0,0,0]
-    for i in 0...@predictors.size
-      next if @prediction[i]==nil
-      result[0]+=@prediction[i][0]*@predictors[i].expectation
-      result[1]+=@prediction[i][1]*@predictors[i].expectation
-      result[2]+=@prediction[i][2]*@predictors[i].expectation
+    expectations=[0,0,0,0,0,0]
+    for i in 1...@predictors.size-2
+      expectations[i]=@predictors[i].expectation
+      expectations[i]=-1 if @prediction[i]==nil
     end
-    agg=result[0]+result[1]+result[2]
-    for i in 0...3
-      result[i]/=agg
-    end
-    result[0],result[1],result[2]=result[(@flip)%3],result[(1+@flip)%3],result[(2+@flip)%3]
+    result=@prediction[expectations.index(expectations.max)]
+    @debug.write("Adopting predictor "+expectations.index(expectations.max).to_s+"\n")
     @debug.write("Aggregate is betting on " + result.to_s + "\n")
-    first=result.index(result.max)+1
-    second=result.index(result.sort[-2])+1
+    first=result.index(result.max)
+    second=result.index(result.sort[-2])
     if (first-second+3)%3==1
-      final=first
+      final=first+1
     else
-      final=second
+      final=second+1
     end
-    if second<0.0||first-second>=0.5*second
+    if result[second]<0.0||result[first]-result[second]>=0.5*result[second]
       final=(first+1)%3==0?3:(first+1)%3
     end
-    if @expectation<-0.15
+    if @prediction[6]!=[0,0,0]&&@prediction[6]!=nil
+      final=((@prediction[6].index(@prediction[6].max)+2)%3==0?3:(@prediction[6].index(@prediction[6].max)+2)%3)
+    end
+    if @prediction[5]!=[0,0,0]&&@prediction[5]!=nil
+      final=((@prediction[5].index(@prediction[5].max)+2)%3==0?3:(@prediction[5].index(@prediction[5].max)+2)%3)
+    end
+    if expectations.max<=0.15
         final=getRandom
         @debug.write("Random fallback in effect\n")
     end
@@ -98,8 +99,6 @@ class Zfeng
 
   def post_predict(move)
     @total+=1
-    getInput
-    feed_all(move,2)
     case move
       when 1
         print "R"
@@ -109,46 +108,38 @@ class Zfeng
         print "S"
     end
     print "\n"
+    getInput
+    feed_all(move,2)
     result=(move-@current+3)%3
     for i in 0...3
       @count[i]*=@magicnumber
     end
-    @debug.write("This is game "+@total.to_s+"\n")
-    @debug.write("Opponent plays "+@current.to_s+" and I play "+move.to_s+"\n")
     case result
       when 1
         @count[0]+=1
-        @actualcount[0]+=1
         feed_all(1,3)
         print("You lost!" )
       when 2
         @count[1]+=1
-        @actualcount[1]+=1
         feed_all(-1,3)
         print("You won!" )
       when 0
         @count[2]+=1
-        @actualcount[2]+=1
         feed_all(0,3)
         print("You tied!" )
     end
     print("\n" )
     flip
-    @expectation=@count[0]/(@count[0]+@count[1]+@count[2])-@count[1]/(@count[0]+@count[1]+@count[2])
-    if @expectation<$overturn_threshold&&@total>=2
-      @lastflip=@total
-      @flip+=2
-    end
     expectations=[]
     for i in 0...@predictors.size
       expectations[i]=@predictors[i].expectation
     end
     @debug.write("Expectations >> "+expectations.to_s+"\n")
-    @debug.write("Aggregate expectation >> "+@expectation.to_s+"\n"+"FLIP >> "+@flip.to_s+"\n")
+    @debug.write("Aggregate expectation >> "+@expectation.to_s+"\n")
     print("Scores:" + "\n")
-    print("Computer Win:" + @actualcount[0].to_s + " Percentage:"+(@actualcount[0].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")
-    print("Tie:"  + @actualcount[2].to_s + " Percentage:"+(@actualcount[2].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")
-    print("Computer Lost:"  + @actualcount[1].to_s + " Percentage:"+(@count[1].to_f/(@actualcount[0]+@actualcount[1]+@actualcount[2])).to_s+ "\n")\
+    print("Computer Win:" + @count[0].to_s + " Percentage:"+(@count[0].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
+    print("Tie:"  + @count[2].to_s + " Percentage:"+(@count[2].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")
+    print("Computer Lost:"  + @count[1].to_s + " Percentage:"+(@count[1].to_f/(@count[0]+@count[1]+@count[2])).to_s+ "\n")\
   end
 
   def flip
@@ -175,6 +166,7 @@ class Predictor
     @lastflip=0
     @prediction=[0,0,0]
     @rate=[0.0,0.0,0.0]
+    @count=[0,0,0]
     @expectation=1.0
   end
   
@@ -207,9 +199,19 @@ class Predictor
   end
   
   def flip
-    if @expectation<$overturn_threshold&&@history.size>=2&&@history.size-@lastflip>=5
-      @lastflip=@history.size
+    return if (@rate[0] - @rate[2] > @rate[1] - @rate[0] && @rate[0] - @rate[2] > @rate[2] - @rate[1])
+    if @rate[1] - @rate[0] > @rate[2] - @rate[1]
+      t = @rate[0]
+      @rate[0] = @rate[1]
+      @rate[1] = @rate[2]
+      @rate[2] = t
       @flip+=2
+    else
+      t = @rate[2];
+      @rate[2] = @rate[1];
+      @rate[1] = @rate[0];
+      @rate[0] = t;
+      @flip+=1
     end
   end
 end
@@ -374,6 +376,11 @@ end
 
 class LongPatternMatcher < Predictor
   
+  def initialize
+    super
+    @expectation=0.0
+  end
+  
   def predict
     len = @history.length;
     last = @history[0]
@@ -384,10 +391,39 @@ class LongPatternMatcher < Predictor
       end
     end
     total=ret[0]+ret[1]+ret[2]
-    return nil if total==0
+    return nil if ret.max==0.0
     for i in 0...3
       ret[i]/=total
     end
+    ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
+    @prediction=ret
+    return ret
+  end
+  
+end
+
+class SelfPatternMatcher < Predictor
+  
+  def initialize
+    super
+    @expectation=0.0
+  end
+  
+  def predict
+    len = @self.length;
+    last = @self[0]
+    ret = [0,0,0]
+    for x in 3...len/2
+      if @self[len-1-x]==@self[len-1]
+        ret[@self[len-x]-1]+=x
+      end
+    end
+    total=ret[0]+ret[1]+ret[2]
+    return nil if ret.max==0.0
+    for i in 0...3
+      ret[i]/=total
+    end
+    ret=[ret[2],ret[0],ret[1]]
     ret[0],ret[1],ret[2]=ret[(@flip)%3],ret[(1+@flip)%3],ret[(2+@flip)%3]
     @prediction=ret
     return ret
