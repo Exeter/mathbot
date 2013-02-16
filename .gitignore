@@ -2,6 +2,8 @@
 *.rbc
 *.debug
 *.out
+*.project
+*.pydevproject
 .DS_Store
 .bundle
 .config
