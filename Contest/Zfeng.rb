@@ -48,7 +48,6 @@ class Zfeng
     for i in 0...@predictors.size
       @prediction[i]=@predictors[i].predict
     end
-    #@debug.write("Unigram >> "+@predictors[0].humancount.to_s)
     @debug.write("Unigram predictor predicts " + @prediction[0].to_s+"\n")
     @debug.write("Result predictor predicts " + @prediction[2].to_s + "\n")
     @debug.write("Bigram predictor predicts " + @prediction[1].to_s + "\n")
@@ -70,14 +69,12 @@ class Zfeng
     @debug.write("Aggregate is betting on " + result.to_s + "\n")
     first=result.index(result.max)+1
     second=result.index(result.sort[-2])+1
-    @debug.write("First >> "+first.to_s+"\n")
-    @debug.write("Second >> "+second.to_s+"\n")
     if (first-second+3)%3==1
       final=first
     else
       final=second
     end
-    if second<0.0||first-second>=0.5*first
+    if second<0.0||first-second>=0.5*second
       final=(first+1)%3==0?3:(first+1)%3
     end
     if @expectation<-0.15
@@ -98,7 +95,6 @@ class Zfeng
   end
 
   def post_predict(move)
-    feed_all(move,2)
     @total+=1
     case move
       when 1
@@ -110,6 +106,7 @@ class Zfeng
     end
     STDOUT.flush
     getInput
+    feed_all(move,2)
     result=(move-@current+3)%3
     for i in 0...3
       @count[i]*=@magicnumber
@@ -133,7 +130,7 @@ class Zfeng
     @debug.write("\n" )
     flip
     @expectation=@count[0]/(@count[0]+@count[1]+@count[2])-@count[1]/(@count[0]+@count[1]+@count[2])
-    if @expectation<0&&@total>=2
+    if @expectation<$overturn_threshold&&@total>=2
       @lastflip=@total
       @flip+=2
     end
@@ -194,7 +191,8 @@ class Predictor
         when 2
           @rate[2]+=1
         end
-        @expectation=(@rate[0]/(@rate[0]+@rate[1]+@rate[2])-@rate[2]/(@rate[0]+@rate[1]+@rate[2]))
+        @expectation*=0.1
+        @expectation+=0.9*(@rate[0]/(@rate[0]+@rate[1]+@rate[2])-@rate[2]/(@rate[0]+@rate[1]+@rate[2]))
       end
     when 2
       @self.push(move)
@@ -204,7 +202,7 @@ class Predictor
   end
   
   def flip
-    if @expectation<0&&@history.size>=2&&@history.size-@lastflip>=5
+    if @expectation<$overturn_threshold&&@history.size>=2&&@history.size-@lastflip>=5
       @lastflip=@history.size
       @flip+=2
     end
@@ -311,7 +309,8 @@ class Response_predictor < Predictor
   
   def feed(move,type)
     super(move,type)
-    return if type!=1||@self.size==0
+    return if type!=1
+    return if @self.size<=1
     for i in 0...3
         for k in 0...3
           @response[i][k]*=@magicnumber
@@ -374,13 +373,10 @@ class LongPatternMatcher < Predictor
     len = @history.length;
     last = @history[0]
     ret = [0,0,0]
-    for i in 0...len
-      for x in 0...25
-        if @history[i+x]==@history[x]
-          ret[last-1]+=x
-        end
+    for x in 3...25
+      if @history[len-1-x]==@history[len-1]
+        ret[@history[len-x]-1]+=x
       end
-      last = @history[i]
     end
     total=ret[0]+ret[1]+ret[2]
     return nil if total==0
