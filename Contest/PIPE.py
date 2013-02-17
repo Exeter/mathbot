@@ -1,6 +1,5 @@
-# /usr/bin/env python
+#!/usr/bin/python
 from subprocess import Popen, PIPE, STDOUT
-import time
 
 print('launching slave processes...')
 zfeng = Popen(['ruby','Zfeng.rb'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
@@ -16,10 +15,10 @@ while x<1000:
         zfeng.kill()
         exit()
     # read one line, remove newline chars and trailing spaces:
-    fengout = zfeng.stdout.read(1)
-    if fengout==".":
-        print(zfeng.stdout.read())
-    morpleout = morple.stdout.read(1)
+    fengout = zfeng.stdout.read(1).decode("utf-8")
+    if fengout=="." or "e" or "Z" or "f":
+        print(zfeng.stdout.read().decode("utf-8"))
+    morpleout = morple.stdout.read(1).decode("utf-8")
     fengtemp=0
     morpletemp=0
     if fengout=='R':
@@ -40,9 +39,10 @@ while x<1000:
         count[1]+=1
     else:
         count[0]+=1
+    print(morpleout + " VS "+fengout)
     # write that line to slave's stdin
-    morple.stdin.write(fengout)
-    zfeng.stdin.write(morpleout)
+    morple.stdin.write(bytes(fengout,"UTF-8"))
+    zfeng.stdin.write(bytes(morpleout,"UTF-8"))
     x+=1
 print(count)
 morple.kill()
