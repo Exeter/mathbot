@@ -1,7 +1,8 @@
-#!/usr/bin/python
+# /usr/bin/env python
 from subprocess import Popen, PIPE, STDOUT
+import time
 
-print('launching slave processes...')
+print 'launching slave processes...'
 zfeng = Popen(['ruby','Zfeng.rb'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 morple = Popen(['./a.out'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 
@@ -10,15 +11,15 @@ count=[0 for i in range(3)]
 while x<1000:
     # check if slave has terminated:
     if zfeng.poll() is not None or morple.poll() is not None:
-        print('slave has terminated.')
+        print 'slave has terminated.'
         morple.kill()
         zfeng.kill()
         exit()
     # read one line, remove newline chars and trailing spaces:
-    fengout = zfeng.stdout.read(1).decode("utf-8")
-    if fengout=="." or "e" or "Z" or "f":
-        print(zfeng.stdout.read().decode("utf-8"))
-    morpleout = morple.stdout.read(1).decode("utf-8")
+    fengout = zfeng.stdout.read(1)
+    if fengout==".":
+        print zfeng.stdout.read()
+    morpleout = morple.stdout.read(1)
     fengtemp=0
     morpletemp=0
     if fengout=='R':
@@ -39,11 +40,14 @@ while x<1000:
         count[1]+=1
     else:
         count[0]+=1
-    print(morpleout + " VS "+fengout)
     # write that line to slave's stdin
-    morple.stdin.write(bytes(fengout,"UTF-8"))
-    zfeng.stdin.write(bytes(morpleout,"UTF-8"))
+    try:
+        morple.stdin.write(fengout)
+        zfeng.stdin.write(morpleout)
+    except IOError, e:
+        print "ERROR"
+        morple.kill()
     x+=1
-print(count)
+print count
 morple.kill()
 zfeng.kill()
