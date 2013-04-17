@@ -26,9 +26,9 @@ class UnigramPredictor : public Predictor{
 		UnigramPredictor(istream* is){
 			in = is;
 			total = 0;
-			}
+		}
 
-			int* predict(){
+		int* predict(){
 			getInput();
 			int* ret = count;
 			for(int i = 0; i < 3; i++)
