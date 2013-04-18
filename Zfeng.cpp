@@ -267,6 +267,7 @@ int processPrediction(double* m){
 }
 
 void postPredict(int h, int b){
+  debug << "Opponent plays " << h << ", and I play " << b << endl;
   switch(b){
   case 0:
     putchar('R');
@@ -288,6 +289,7 @@ void postPredict(int h, int b){
   ++stat[(h - b + 3) % 3];
   ++total;
   expectation = 1.0 * stat[2] / total - 1.0 * stat[1] / total;
+  debug << "Overall expectation : " << expectation << endl;
   if(!CONTEST)
     for(int i = 0; i < 3; i++)
       printf("%s %d %.2f\n", meaning[i].c_str(), stat[i], 1.0 * stat[i] / total);
