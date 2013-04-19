@@ -12,9 +12,10 @@ using namespace std;
 ofstream debug ("Zfeng.debug");
 const int NUM_PREDICTORS = 5;
 const bool DEBUG         = true;
-const bool CONTEST       = false;
+bool CONTEST             = false;
 int stat[3]              = {0, 0, 0},
     total                = 0,
+    h,
     counts[NUM_PREDICTORS * 2][3],
     turns[NUM_PREDICTORS * 2],
     shift[NUM_PREDICTORS * 2];
@@ -52,7 +53,7 @@ public:
     token -= '0';
     ++total;
     for(int i = 0; i < 3; i++)
-      count[i] *= 0.9;
+      count[i] *= 0.8;
     count[token] += 1.0;
   }
   
@@ -87,7 +88,7 @@ public:
 
     for(int i = 0; i < 3; i++)
       for(int j = 0; j < 3; j++)
-	count[i][j] *= 0.95;
+	count[i][j] *= 0.9;
     
     if(total > 0)
       count[last][token2] += 1.0;
@@ -111,17 +112,15 @@ public:
 
   double* predict(){
     getInput();
-    int patlen, last = history.back();
+    int last = history.back();
     double* ret = new double[3];
     ret[0] = 0; ret[1] = 0; ret[2] = 0;
     toDelete = ret;
     if(total < 5)
       return ret;
     for(int i = total - 2; i >= 0; i--){
-      patlen = 0;
-      for(int j = 3; j < 25 && history[i - j] == history[j]; j++)
-	++patlen;
-      ret[last] += patlen * patlen;
+      for(int x = 0; history[i - x] == history[total - 1 - x] && x < 25; x++)
+        ret[last] += x;
       last = history[i];
     }
     return ret;
@@ -175,7 +174,7 @@ int getInput(){
 }
 
 bool predictOrRandom(){
-  return expectation > 0.0 && total > 2;
+  return *max_element(expectations, expectations + 2 * NUM_PREDICTORS) > 0.0 && total > 2;
 }
 
 double* predict(){
@@ -183,8 +182,7 @@ double* predict(){
     double* t = predictors[i]->predict();
     for(int j = 0; j < 3; j++)
       predictions[i][(j + shift[i]) % 3] = t[j];
-    if(DEBUG)
-      debug << "Predictor " << i << " predicts ";
+    debug << "Predictor " << i << " predicts ";
     copy(predictions[i], predictions[i] + 3, ostream_iterator<double>(debug, " "));
     debug << endl;
   }
@@ -197,8 +195,17 @@ double* predict(){
     copy(predictions[i + NUM_PREDICTORS], predictions[i + NUM_PREDICTORS] + 3, ostream_iterator<double>(debug, " "));
     debug << endl;
   }
-  int maxidx = distance(expectations, max_element(expectations,
-						  expectations + 3));
+  int maxidx;
+  for(int i = 0; i < NUM_PREDICTORS * 2; i++){
+    int rank = 0;
+    for(int j = 1; j < NUM_PREDICTORS * 2; j++)
+      rank += (expectations[i] >= expectations[(i + j) % (2 * NUM_PREDICTORS)]);
+    if(rank == 2 * NUM_PREDICTORS - 1){
+      maxidx = i;
+      break;
+    }
+  }
+  debug << "Adopting predictor " << maxidx << endl;
   return predictions[maxidx];
 }
 
@@ -239,35 +246,34 @@ void verify(int h){
     expectations[i] = rates[i][1] - rates[i][2];
     if(expectations[i] < 0.0)
       ++turns[i];
-    if(turns[i] > 5){
+    if(turns[i] > 3){
       shift[i] += 2;
       turns[i] = 0;
     }
   }
+  debug << "Shift ";
+  copy(shift, shift + 2 * NUM_PREDICTORS, ostream_iterator<int>(debug, " "));
+    debug << endl;
   debug << "Expectations : ";
   copy(expectations, expectations + NUM_PREDICTORS * 2, ostream_iterator<double>(debug, " "));
   debug << endl;
 }
 
 int processPrediction(double* m){
-  int r[3];
-  for(int i = 0; i < 3; i++){
-    int v = (m[i] > m[(i + 1) % 3]) + (m[i] > m[(i + 2) % 3]);
-    if(v == 2)
-      r[0] = i;
-    else if(v == 1)
-      r[1] = i;
-    else
-      r[2] = i;
-  }
-  if(m[r[0]] >= 1.5 * m[r[1]])
-    return (r[0] + 4) % 3;
+  double rock_expectation = m[2] - m[1];
+  double paper_expectation = m[0] - m[2];
+  double scissor_expectation = m[1] - m[0];
+  if (rock_expectation > scissor_expectation && rock_expectation > paper_expectation)
+    return 0;
+  else if(paper_expectation > rock_expectation && paper_expectation > scissor_expectation)
+    return 1;
   else
-    return ((r[0] - r[1] + 3) % 3 == 1 ? r[0] : r[1]);
+    return 2;
 }
 
-void postPredict(int h, int b){
-  debug << "Opponent plays " << h << ", and I play " << b << endl;
+void postPredict(int b){
+  if(!CONTEST)
+    h = getInput();
   switch(b){
   case 0:
     putchar('R');
@@ -279,10 +285,15 @@ void postPredict(int h, int b){
     putchar('S');
     break;
   }
-  if(CONTEST)
+  if(CONTEST){
     fflush(stdout);
-  if(!CONTEST)
+    h = getInput();
+    debug << "Opponent plays " << h << ", and I play " << b << endl;
+  }
+  if(!CONTEST){
+    putchar(' ');
     putchar('\n');
+  }
   human << h;
   robot << b;
   result << (h - b + 3) % 3;
@@ -295,7 +306,8 @@ void postPredict(int h, int b){
       printf("%s %d %.2f\n", meaning[i].c_str(), stat[i], 1.0 * stat[i] / total);
 }
 
-int main(){
+int main(int argc, char* argv[]){
+  CONTEST = atoi(argv[1]);
   char token;
   for(int i = 0; i < NUM_PREDICTORS; i++)
     for(int j = 0; j < 3; j++){
@@ -305,24 +317,21 @@ int main(){
   for(int i = 0; i < NUM_PREDICTORS; i++)
     shift[i + NUM_PREDICTORS] = 1;
   
-  if(CONTEST)
-    putRandom();
-  
-  while((token = getInput()) || true){
-    debug << "Round " << total << ' ';
+  while(true){
+    debug << "Round " << total + 1 << ' ';
     if(predictOrRandom()){
       debug << endl;
       double* p = predict();
-      verify(token);
-      postPredict(token, processPrediction(p));
+      postPredict(processPrediction(p));
+      verify(h);
     }
     else{
       debug << ": Random fallback is in effect." << endl;
       if(total >= 2){
         predict();
-	verify(token);
       }
-      postPredict(token, getRandom());
+      postPredict(getRandom());
+      verify(h);
       if(total == 0)
 	for(int i = 0; i < NUM_PREDICTORS; i++){
 	  predictors[i]->getInput();
