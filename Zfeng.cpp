@@ -18,7 +18,7 @@ int stat[3]              = {0, 0, 0},
     h,
     turns[NUM_PREDICTORS * 2],
     shift[NUM_PREDICTORS * 2];
-double expectation = 0.0,
+long double expectation = 0.0,
        expectations[NUM_PREDICTORS * 2],
        rates       [NUM_PREDICTORS * 2][3],
        predictions [NUM_PREDICTORS * 2][3],
@@ -30,7 +30,7 @@ class Predictor{
 public:
   Predictor(){};
   int total;
-  virtual double* predict() = 0;
+  virtual long double* predict() = 0;
   virtual void getInput() = 0;
 };
 
@@ -41,7 +41,7 @@ public:
     total = 0;
   }
   
-  double* predict(){
+  long double* predict(){
     getInput();
     return count;
   }
@@ -53,13 +53,13 @@ public:
     token -= '0';
     ++total;
     for(int i = 0; i < 3; i++)
-      count[i] *= 0.8;
+      count[i] *= 0.87358;
     count[token] += 1.0;
   }
   
 private:
   istream* in;
-  double count[3] = {0.0, 0.0, 0.0};
+  long double count[3] = {0.0, 0.0, 0.0};
 };
 
 class BigramPredictor : public Predictor{
@@ -70,7 +70,7 @@ public:
     total = 0;
   }
 	
-  double* predict(){
+  long double* predict(){
     getInput();
     return count[last];
   }
@@ -98,7 +98,7 @@ public:
   
 private:
   int last;
-  double count[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+  long double count[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
   istream* in1;
   istream* in2;
 };
@@ -110,10 +110,10 @@ public:
     total = 0;
   }
 
-  double* predict(){
+  long double* predict(){
     getInput();
     int last = history.back();
-    double* ret = new double[3];
+    long double* ret = new long double[3];
     ret[0] = 0; ret[1] = 0; ret[2] = 0;
     toDelete = ret;
     if(total < 5)
@@ -134,14 +134,14 @@ public:
     token = in->get();
     in->putback(token);
     token -= '0';
-    history.push_back((unsigned short) token);
+    history.push_back((unsigned char) token);
     ++total;
   }
 	
 private:
   istream* in;
-  double* toDelete = 0x000000;
-  vector<unsigned short> history;
+  long double* toDelete = 0x000000;
+  vector<unsigned char> history;
 };
 
 Predictor* predictors[NUM_PREDICTORS] = {new UnigramPredictor(&human),
@@ -174,25 +174,25 @@ int getInput(){
 }
 
 bool predictOrRandom(){
-  return *max_element(expectations, expectations + 2 * NUM_PREDICTORS) > 0 && total > 2;
+  return *max_element(expectations, expectations + 2 * NUM_PREDICTORS) > 0.0 && total > 2;
 }
 
-double* predict(){
+long double* predict(){
   for(int i = 0; i < NUM_PREDICTORS; i++){
-    double* t = predictors[i]->predict();
+    long double* t = predictors[i]->predict();
     for(int j = 0; j < 3; j++)
       predictions[i][(j + shift[i]) % 3] = t[j];
     debug << "Predictor " << i << " predicts ";
-    copy(predictions[i], predictions[i] + 3, ostream_iterator<double>(debug, " "));
+    copy(predictions[i], predictions[i] + 3, ostream_iterator<long double>(debug, " "));
     debug << endl;
   }
   for(int i = 0; i < NUM_PREDICTORS; i++){
-    double* t = reflexive[i]->predict();
+    long double* t = reflexive[i]->predict();
     for(int j = 0; j < 3; j++)
       predictions[i + NUM_PREDICTORS][(j + shift[i + NUM_PREDICTORS]) % 3] = t[j];
     if(DEBUG)
       debug << "Predictor " << i + NUM_PREDICTORS << " predicts ";
-    copy(predictions[i + NUM_PREDICTORS], predictions[i + NUM_PREDICTORS] + 3, ostream_iterator<double>(debug, " "));
+    copy(predictions[i + NUM_PREDICTORS], predictions[i + NUM_PREDICTORS] + 3, ostream_iterator<long double>(debug, " "));
     debug << endl;
   }
   int maxidx;
@@ -216,22 +216,25 @@ int getRandom(){
 void verify(int h){
   for(int i = 0; i < NUM_PREDICTORS; i++){
     counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3] *= 0.96;
-    ++counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3];
+    counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3] += 1.0;
   }
   for(int i = 0; i < NUM_PREDICTORS; i++){
     counts[i + NUM_PREDICTORS][(distance(predictions[i + NUM_PREDICTORS],
 					   max_element(predictions[i + NUM_PREDICTORS],
 						       predictions[i + NUM_PREDICTORS] + 3))
 				  - h + 4) % 3] *= 0.96;
-    ++counts[i + NUM_PREDICTORS][(distance(predictions[i + NUM_PREDICTORS],
+    counts[i + NUM_PREDICTORS][(distance(predictions[i + NUM_PREDICTORS],
 					   max_element(predictions[i + NUM_PREDICTORS],
 						       predictions[i + NUM_PREDICTORS] + 3))
-				  - h + 4) % 3];
+				  - h + 4) % 3] += 1.0;
   }
-  for(int i = 0; i < NUM_PREDICTORS * 2; i++)
-    for(int j = 0; j < 3; j++){
-      rates[i][j] = 1.0 * counts[i][j] / total;
-    }
+  for(int i = 0; i < NUM_PREDICTORS * 2; i++){
+    long double sum = 0.0;
+    for(int j = 0; j < 3; j++)
+      sum += counts[i][j];
+    for(int j = 0; j < 3; j++)
+      rates[i][j] = 1.0 * counts[i][j] / sum;
+  }
   for(int i = 0; i < NUM_PREDICTORS * 2; i++){
     expectations[i] = rates[i][1] - rates[i][2];
     if(expectations[i] < 0.0)
@@ -245,14 +248,14 @@ void verify(int h){
   copy(shift, shift + 2 * NUM_PREDICTORS, ostream_iterator<int>(debug, " "));
     debug << endl;
   debug << "Expectations : ";
-  copy(expectations, expectations + NUM_PREDICTORS * 2, ostream_iterator<double>(debug, " "));
+  copy(expectations, expectations + NUM_PREDICTORS * 2, ostream_iterator<long double>(debug, " "));
   debug << endl;
 }
 
-int processPrediction(double* m){
-  double rock_expectation = m[2] - m[1];
-  double paper_expectation = m[0] - m[2];
-  double scissor_expectation = m[1] - m[0];
+int processPrediction(long double* m){
+  long double rock_expectation = m[2] - m[1];
+  long double paper_expectation = m[0] - m[2];
+  long double scissor_expectation = m[1] - m[0];
   if (rock_expectation > scissor_expectation && rock_expectation > paper_expectation)
     return 0;
   else if(paper_expectation > rock_expectation && paper_expectation > scissor_expectation)
@@ -311,7 +314,7 @@ int main(int argc, char* argv[]){
     debug << "Round " << total + 1 << ' ';
     if(predictOrRandom()){
       debug << endl;
-      double* p = predict();
+      long double* p = predict();
       postPredict(processPrediction(p));
       verify(h);
     }
