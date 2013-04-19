@@ -16,13 +16,13 @@ bool CONTEST             = false;
 int stat[3]              = {0, 0, 0},
     total                = 0,
     h,
-    counts[NUM_PREDICTORS * 2][3],
     turns[NUM_PREDICTORS * 2],
     shift[NUM_PREDICTORS * 2];
 double expectation = 0.0,
        expectations[NUM_PREDICTORS * 2],
-       rates[NUM_PREDICTORS * 2][3],
-       predictions[NUM_PREDICTORS * 2][3];
+       rates       [NUM_PREDICTORS * 2][3],
+       predictions [NUM_PREDICTORS * 2][3],
+       counts      [NUM_PREDICTORS * 2][3];
 string meaning[3] = {"Tie ", "Win ", "Lose"};
 stringstream human, robot, result;
 
@@ -174,7 +174,7 @@ int getInput(){
 }
 
 bool predictOrRandom(){
-  return *max_element(expectations, expectations + 2 * NUM_PREDICTORS) > 0.0 && total > 2;
+  return *max_element(expectations, expectations + 2 * NUM_PREDICTORS) > 0 && total > 2;
 }
 
 double* predict(){
@@ -210,34 +210,24 @@ double* predict(){
 }
 
 int getRandom(){
-  srand(time(NULL));
   return rand() % 3;
 }
 
-void putRandom(){
-  switch(getRandom()){
-  case 0:
-    putchar('R');
-    break;
-  case 1:
-    putchar('P');
-    break;
-  case 2:
-    putchar('S');
-    break;
-  }
-  if(CONTEST)
-    fflush(stdout);
-}
-
 void verify(int h){
-  for(int i = 0; i < NUM_PREDICTORS; i++)
+  for(int i = 0; i < NUM_PREDICTORS; i++){
+    counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3] *= 0.96;
     ++counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3];
-  for(int i = 0; i < NUM_PREDICTORS; i++)
+  }
+  for(int i = 0; i < NUM_PREDICTORS; i++){
+    counts[i + NUM_PREDICTORS][(distance(predictions[i + NUM_PREDICTORS],
+					   max_element(predictions[i + NUM_PREDICTORS],
+						       predictions[i + NUM_PREDICTORS] + 3))
+				  - h + 4) % 3] *= 0.96;
     ++counts[i + NUM_PREDICTORS][(distance(predictions[i + NUM_PREDICTORS],
 					   max_element(predictions[i + NUM_PREDICTORS],
 						       predictions[i + NUM_PREDICTORS] + 3))
 				  - h + 4) % 3];
+  }
   for(int i = 0; i < NUM_PREDICTORS * 2; i++)
     for(int j = 0; j < 3; j++){
       rates[i][j] = 1.0 * counts[i][j] / total;
