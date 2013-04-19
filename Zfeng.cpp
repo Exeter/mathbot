@@ -162,9 +162,15 @@ int getInput(){
     switch(c){
     case 'R':
       return 0;
+    case 'r':
+      return 0;
     case 'P':
       return 1;
+    case 'p':
+      return 1;
     case 'S':
+      return 2;
+    case 's':
       return 2;
     default:
       goto start;
