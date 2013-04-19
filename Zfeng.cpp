@@ -215,14 +215,14 @@ int getRandom(){
 
 void verify(int h){
   for(int i = 0; i < NUM_PREDICTORS; i++){
-    counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3] *= 0.96;
+    counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3] *= 0.99;
     counts[i][(distance(predictions[i], max_element(predictions[i], predictions[i] + 3)) - h + 4) % 3] += 1.0;
   }
   for(int i = 0; i < NUM_PREDICTORS; i++){
     counts[i + NUM_PREDICTORS][(distance(predictions[i + NUM_PREDICTORS],
 					   max_element(predictions[i + NUM_PREDICTORS],
 						       predictions[i + NUM_PREDICTORS] + 3))
-				  - h + 4) % 3] *= 0.96;
+				  - h + 4) % 3] *= 0.99;
     counts[i + NUM_PREDICTORS][(distance(predictions[i + NUM_PREDICTORS],
 					   max_element(predictions[i + NUM_PREDICTORS],
 						       predictions[i + NUM_PREDICTORS] + 3))
@@ -284,7 +284,6 @@ void postPredict(int b){
     debug << "Opponent plays " << h << ", and I play " << b << endl;
   }
   if(!CONTEST){
-    putchar(' ');
     putchar('\n');
   }
   human << h;
